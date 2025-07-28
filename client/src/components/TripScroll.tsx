@@ -10,7 +10,7 @@ const TrippyScroll = () => {
   const rotate = useTransform(scrollYProgress, [0, 1], ["0deg", "90deg"]);
 
   return (
-    <div ref={targetRef} className="relative z-0 h-[800vh] bg-[#50C878]">
+    <div ref={targetRef} className="relative z-0 h-[800vh] bg-[#9FE2BF]">
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
@@ -31,7 +31,7 @@ const generateSections = (count, color, rotate) => {
     return <></>;
   }
 
-  const nextColor = color === "#000000" ? "#50C878" : "#000000"; 
+  const nextColor = color === "#000000" ? "#9FE2BF" : "#000000"; 
 
   return (
     <Section rotate={rotate} background={color}>

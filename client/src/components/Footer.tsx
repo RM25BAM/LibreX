@@ -1,5 +1,5 @@
-import { useMotionValue, motion, useSpring, useTransform } from "framer-motion";
-import { useRef } from "react";
+import { useMotionValue, motion, useSpring, useTransform, MotionValue } from "framer-motion";
+import { useRef, type JSXElementConstructor, type Key, type ReactElement, type ReactNode, type ReactPortal } from "react";
 import { FiArrowRight } from "react-icons/fi";
 import smart from "../assets/smart.jpg";
 import property from "../assets/property.jpg";
@@ -8,7 +8,7 @@ import contact from "../assets/contact.jpg";
 export const Footer = () => {
     return (
         <section className="bg-black p-4 mb-4 md:p-8">
-            <div className="mx-auto max-w-5xl">
+            <div className="mx-auto max-w-5xl space-y-6" >
                 <Link
                     heading="How it Works"
                     subheading="Smart escrow, stablecoins, and more"
@@ -88,20 +88,22 @@ const Link = ({ heading, imgSrc, subheading, href }) => {
                     }}
                     className="relative z-10 block text-4xl font-bold text-neutral-500 transition-colors duration-500 group-hover:text-neutral-50 md:text-6xl"
                 >
-                    {heading.split("").map((l, i) => (
-                        <motion.span
-                            variants={{
-                                initial: { x: 0 },
-                                whileHover: { x: 16 },
-                            }}
-                            transition={{ type: "spring" }}
-                            className="inline-block"
-                            key={i}
-                        >
-                            {l}
-                        </motion.span>
+                    {heading.split(" ").map((word, i) => (
+                        <span key={i} className="inline-block mr-2">
+                            <motion.span
+                                variants={{
+                                    initial: { x: 0 },
+                                    whileHover: { x: 16 },
+                                }}
+                                transition={{ type: "spring" }}
+                                className="inline-block"
+                            >
+                                {word}
+                            </motion.span>
+                        </span>
                     ))}
                 </motion.span>
+
                 <span className="relative z-10 mt-2 block text-base text-neutral-500 transition-colors duration-500 group-hover:text-neutral-50">
                     {subheading}
                 </span>
@@ -120,7 +122,7 @@ const Link = ({ heading, imgSrc, subheading, href }) => {
                 }}
                 transition={{ type: "spring" }}
                 src={imgSrc}
-                className="absolute z-0 h-24 w-32 rounded-lg object-cover md:h-48 md:w-64"
+                className="absolute z-0 h-24 w-32 rounded-lg object-cover text-base block md:h-48 md:w-64"
                 alt={`Image representing a link for ${heading}`}
             />
 

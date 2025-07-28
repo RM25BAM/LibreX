@@ -2,11 +2,11 @@ import { motion } from "framer-motion";
 
 export const Reveal = () => {
   return (
-    <section className="grid place-content-center gap-2 px-8 py-24 text-black">
-      <FlipLink href="#">Twitter</FlipLink>
-      <FlipLink href="#">Linkedin</FlipLink>
-      <FlipLink href="#">Facebook</FlipLink>
-      <FlipLink href="#">Instagram</FlipLink>
+    <section className="grid place-content-center gap-2 px-8 py-24 text-[#9FE2BF]">
+      <FlipLink href="#">escrow</FlipLink>
+      <FlipLink href="#">secure</FlipLink>
+      <FlipLink href="#">transparent</FlipLink>
+      <FlipLink href="#">onchain</FlipLink>
     </section>
   );
 };

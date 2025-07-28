@@ -2,15 +2,16 @@ import Navbar from "../components/Navbar"
 import { useLenis } from '../hooks/useLenis';
 import Video from "../assets/hero.mp4"
 import HorizontalScrollCarousel from "../components/HorizontalScroll.tsx"
-import {Footer} from "../components/Footer.tsx"
-import TrippyScroll from "../components/TripScroll.tsx";
+import { Footer } from "../components/Footer.tsx"
+//import TrippyScroll from "../components/TripScroll.tsx";
 import Marquee from "../components/ScrollMarquee.tsx"
 import { Reveal } from "../components/reveal.tsx";
+/* import { StickyScroll } from "../components/ui/sticky-scroll-reveal.tsx"; */
 
 const Home = () => {
     useLenis();
     return (
-        <div className="flex-row bg-black/15 bg-[#50C878]">
+        <div className="flex-row bg-black/15">
             <div className="top-0 sticky z-50">
                 <Navbar />
             </div>
@@ -34,18 +35,20 @@ const Home = () => {
                 </div>
             </div>
             <Marquee />
-            <div className="bg-[#50C878] h-[80svh]">
+            <div className=" h-[70svh] bg-black">
                 <Reveal />
-                </div>
+            </div>
             {/* <div className="h-[240vh]">
                 <h1>
                     scroll down and text sliding up 
                 </h1>
             </div> */}
-            
+            <div>
+           {/*       <StickyScroll/> */}
+            </div>
+           
             <div className=" bg-amber-200 text-pink-600">
-                <TrippyScroll />
-                <h1>with the trippy box I plan to make cards that slide down</h1>
+                <h1>with the I plan to make cards that slide down</h1>
             </div>
             <div>
                 <h1>
