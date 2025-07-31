@@ -1,6 +1,17 @@
+import Navbar from "../components/Navbar"
+import { useLenis } from "../hooks/useLenis"
+
 const Properties = () => {
+  useLenis();
   return (
-    <div className="bg-fuchsia-400">Properties</div>
+    <>
+      <div className="bg-white h-[400svh] top-0">
+        <Navbar />
+        <div>
+          
+        </div>
+      </div>
+    </>
   )
 }
 

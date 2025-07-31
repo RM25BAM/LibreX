@@ -1,108 +1,106 @@
-"use client";
-import React, { useEffect, useRef, useState } from "react";
-import { useMotionValueEvent, useScroll } from "motion/react";
-import { motion } from "motion/react";
-import { cn } from "../lib/utils";
 
-export const StickyScroll = ({
-    content,
-    contentClassName,
-}: {
-    content: {
-        title: string;
-        description: string;
-        content?: React.ReactNode | any;
-    }[];
-    contentClassName?: string;
-}) => {
-    const [activeCard, setActiveCard] = React.useState(0);
-    const ref = useRef<any>(null);
-    const { scrollYProgress } = useScroll(); 
+import React, { useRef, useState } from "react";
+import { motion, useScroll, useMotionValueEvent } from "framer-motion";
 
-    const cardLength = content.length;
+const StickyScroll = () => {
+    const content = [
+        {
+            title: "Escrow Without the Middleman",
+            description:
+                "LibreX replaces traditional escrow agents with smart contracts. Buyers can submit offers using stablecoins like USDT or ARP, and sellers can accept with confidence, knowing the funds are locked and released only when agreed milestones are met. This reduces costs, delays, and manual oversight.",
+            content: (
+                <img
+                    src=""
+                    alt="1"
+                    className="w-full h-full object-cover"
+                />
+            ),
+        },
+        {
+            title: "Borderless Property Transactions",
+            description:
+                "Whether you're buying land in Texas or renting an apartment in Buenos Aires, LibreX simplifies global real estate deals. By leveraging the XRP Ledger’s speed and finality, the platform ensures secure transactions that bypass currency conversion fees and regulatory bottlenecks.",
+            content: (
+                <img
+                    src=""
+                    alt="2"
+                    className="w-full h-full object-cover"
+                />
+            ),
+        },
+        {
+            title: "Smart, Secure, and Scalable",
+            description:
+                "The platform is built with React (web) and React Native (mobile), with blockchain logic handled entirely on-chain. Future features include on-chain offer ratings, buyer pre-approval tools for underbanked users, QR-based payments, and KYC-optional profiles — all with enterprise scalability in mind.",
+            content: (
+                <img
+                    src=""
+                    alt="3"
+                    className="w-full h-full object-cover"
+                />
+            ),
+        },
+    ];
 
-    useMotionValueEvent(scrollYProgress, "change", (latest) => {
-        const cardsBreakpoints = content.map((_, index) => index / cardLength);
-        const closestBreakpointIndex = cardsBreakpoints.reduce(
-            (acc, breakpoint, index) => {
-                const distance = Math.abs(latest - breakpoint);
-                if (distance < Math.abs(latest - cardsBreakpoints[acc])) {
-                    return index;
-                }
-                return acc;
-            },
-            0,
-        );
-        setActiveCard(closestBreakpointIndex);
+    const [activeCard, setActiveCard] = useState(0);
+    const ref = useRef<HTMLDivElement>(null);
+
+    const { scrollYProgress } = useScroll({
+        target: ref,
+        offset: ["start start", "end end"],
     });
 
-    const backgroundColors = [
-        "#0f172a", // slate-900
-        "#000000", // black
-        "#171717", // neutral-900
-    ];
-    const linearGradients = [
-        "linear-gradient(to bottom right, #06b6d4, #10b981)", // cyan-500 to emerald-500
-        "linear-gradient(to bottom right, #ec4899, #6366f1)", // pink-500 to indigo-500
-        "linear-gradient(to bottom right, #f97316, #eab308)", // orange-500 to yellow-500
-    ];
-
-    const [backgroundGradient, setBackgroundGradient] = useState(
-        linearGradients[0],
-    );
-
-    useEffect(() => {
-        setBackgroundGradient(linearGradients[activeCard % linearGradients.length]);
-    }, [activeCard]);
+    useMotionValueEvent(scrollYProgress, "change", (latest) => {
+        const index = Math.floor(latest * content.length);
+        setActiveCard(Math.min(index, content.length - 1));
+    });
 
     return (
-        <motion.div
-            animate={{
-                backgroundColor: backgroundColors[activeCard % backgroundColors.length],
-            }}
-            className="relative flex h-auto justify-center space-x-10 rounded-md p-10"
-            ref={ref}
-        >
-            <div className="div relative flex items-start px-4">
-                <div className="max-w-2xl">
+        <div>
+            <div className=" text-white place-content-left pt-20 ml-35 md:px-10">
+                <h1 className="text-4xl md:text-6xl font-extrabold mt-10">Our Capabilities</h1>
+                <p className="max-w-4xl mt-4 text-lg">
+                    LibreX is a decentralized escrow platform for real estate transactions, designed to eliminate costly intermediaries and cross-border friction. Powered by the XRP Ledger and integrated with smart contracts on its EVM sidechain, LibreX enables buyers and sellers to create secure, trustless offers on-chain. With stablecoin support and a seamless digital interface, LibreX transforms the outdated, paperwork-heavy real estate process into a fast, transparent, and global experience.
+                </p>
+            </div>
+            <div ref={ref} className="relative grid grid-cols-1 lg:grid-cols-2 gap-10  ml-35 p-4 md:p-10 text-white">
+                <div className="flex flex-col">
                     {content.map((item, index) => (
-                        <div key={item.title + index} className="my-20">
-                            <motion.h2
-                                initial={{
-                                    opacity: 0,
-                                }}
-                                animate={{
-                                    opacity: activeCard === index ? 1 : 0.3,
-                                }}
-                                className="text-2xl font-bold text-slate-100"
+                        <div key={index} className="h-screen flex flex-col justify-center items-start">
+                            <motion.div
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: activeCard === index ? 1 : 0.3 }}
+                                transition={{ duration: 0.5, ease: "easeInOut" }}
                             >
-                                {item.title}
-                            </motion.h2>
-                            <motion.p
-                                initial={{
-                                    opacity: 0,
-                                }}
-                                animate={{
-                                    opacity: activeCard === index ? 1 : 0.3,
-                                }}
-                                className="text-kg mt-10 max-w-sm text-slate-300"
-                            >
-                                {item.description}
-                            </motion.p>
+                                <h2 className="text-3xl md:text-4xl font-bold">{item.title}</h2>
+                                <p className="mt-6 text-slate-300 text-lg md:text-xl max-w-md">
+                                    {item.description}
+                                </p>
+                            </motion.div>
                         </div>
                     ))}
-                    <div className="h-40" />
+                </div>
+                <div className="hidden lg:flex sticky top-0 h-screen items-center justify-center">
+                    <div className="relative h-80 w-96 rounded-xl overflow-hidden shadow-xl border-4 border-amber-300">
+                        {content.map((item, index) => (
+                            <motion.div
+                                key={item.title + index}
+                                initial={{ opacity: 0, scale: 1.05 }}
+                                animate={{
+                                    opacity: activeCard === index ? 1 : 0,
+                                    scale: activeCard === index ? 1 : 1.05,
+                                }}
+                                transition={{ duration: 0.5, ease: "easeInOut" }}
+                                className="absolute inset-0 h-full w-full"
+                            >
+                                {item.content}
+                            </motion.div>
+                        ))}
+                    </div>
                 </div>
             </div>
-            <div
-                style={{ background: backgroundGradient }}
-                className={cn(
-                    "sticky top-10 hidden h-60 w-80 overflow-hidden rounded-md bg-white lg:block",
-                    contentClassName,
-                )}
-            >
-                {content[activeCard].content ?? null}
-            </div>
-        </motion.div>
+        </div>
     );
 };
+
+export default StickyScroll;
