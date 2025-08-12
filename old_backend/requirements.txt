@@ -1,0 +1,7 @@
+fastapi
+uvicorn
+xrpl-py
+python-dotenv
+sqlmodel
+pytest
+pytest-mock

@@ -3,7 +3,7 @@ import type { ReactElement, JSXElementConstructor, ReactNode, ReactPortal, Key }
 
 export const Reveal = () => {
   return (
-    <section className="grid place-content-left pl-40 gap-2 px-8 py-24 text-[#9FE2BF]">
+    <section className="grid place-content-left pl-40 gap-2 px-8 py-24 text-[#FF6D4D]">
       <FlipLink>escrow</FlipLink>
       <FlipLink >secure</FlipLink>
       <FlipLink>transparent</FlipLink>

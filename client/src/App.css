@@ -1,5 +1,20 @@
 @import "tailwindcss";
 
-:root {
-    background-color: black;
+/* Prevent horizontal scroll globally */
+html,
+body,
+#root {
+    overflow-x: hidden;
+    scrollbar-width: none;
+
+}
+
+/* Optional: tighter clipping if you’re on a newer Tailwind */
+@supports (overflow-x: clip) {
+
+    html,
+    body,
+    #root {
+        overflow-x: clip;
+    }
 }
