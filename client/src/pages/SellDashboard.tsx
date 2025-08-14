@@ -378,6 +378,7 @@ const OfferTimelineModal = ({
   onClose,
   onStartVerifyId,
   onStartCreateEscrow,
+  onFinalApproval,
 }: {
   offer: OfferTimelineType | null;
   role: "buyer" | "seller";
@@ -385,6 +386,7 @@ const OfferTimelineModal = ({
   onClose: () => void;
   onStartVerifyId: (offer: OfferTimelineType) => Promise<void>;
   onStartCreateEscrow: (offer: OfferTimelineType) => Promise<void>;
+  onFinalApproval: (offerId: string, decision: "approved" | "rejected") => Promise<void>;
 }) => {
   const [liveOffer, setLiveOffer] = useState<OfferTimelineType | null>(offer);
   const [docBusy, setDocBusy] = useState(false);
@@ -646,20 +648,7 @@ const OfferTimelineModal = ({
                             ? "Documents are under review."
                             : "Waiting for documents."}
                     </p>
-                    {role === "buyer" && !escrowCreated && (
-                      <p className="text-xs text-amber-600 mt-2">Escrow must be created before verifying ID.</p>
-                    )}
-                    {role === "buyer" && escrowCreated && idvStepState !== "complete" && (
-                      <div className="mt-3">
-                        <Button
-                          variant="primary"
-                          disabled={idvStepState === "inprogress"}
-                          onClick={() => onStartVerifyId(o)}
-                        >
-                          {idvStepState === "inprogress" ? "Opening…" : "Start ID Verify"}
-                        </Button>
-                      </div>
-                    )}
+
 
                     {/* Doc upload UI (drag & drop with preview) */}
                     {idvStepState === "complete" && (
@@ -789,15 +778,15 @@ const OfferTimelineModal = ({
                         <div className="flex gap-2">
                           <Button
                             variant="primary"
-                            onClick={() => handleFinalApproval(o.id, "approved")}
+                            onClick={() => onFinalApproval(o.id, "approved")}
                             className="bg-green-600 hover:bg-green-700"
                           >
                             <FaCheckCircle /> Accept & Approve
                           </Button>
                           <Button
                             variant="danger"
-                            onClick={() => handleFinalApproval(o.id, "rejected")}
-                            className="bg-red-600 hover:bg-red-700"
+                            onClick={() => onFinalApproval(o.id, "rejected")}
+                            className="bg-red-600 hover:bg-red-700 text-white"
                           >
                             <FaTimes /> Reject
                           </Button>
@@ -2047,6 +2036,7 @@ const SellDashboard: React.FC = () => {
         onClose={() => setSelectedOffer(null)}
         onStartVerifyId={handleStartVerifyId}
         onStartCreateEscrow={handleStartCreateEscrow}
+        onFinalApproval={handleFinalApproval}
       />
 
       {/* Simple IDV Dialog */}
