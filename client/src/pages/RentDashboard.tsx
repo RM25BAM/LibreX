@@ -38,6 +38,7 @@ import { ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage
 import { auth, storage } from "../../firebase";
 import { getFirestore } from "firebase/firestore";
 import { useNavigate } from "react-router-dom";
+import SimpleIdvDialog from "../components/SimpleIdvDialog";
 
 const db = getFirestore();
 
@@ -133,10 +134,10 @@ const Button = ({
     onClick={onClick}
     disabled={disabled}
     className={`px-4 h-10 text-sm font-medium rounded-lg shadow-sm transition-colors flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed ${variant === "primary"
-        ? "bg-[#FF6D4D] text-white hover:bg-[#e85f41]"
-        : variant === "danger"
-          ? "bg-red-50 text-red-600 border border-red-200 hover:bg-red-100"
-          : "bg-white border border-slate-300 text-slate-700 hover:bg-slate-50"
+      ? "bg-[#FF6D4D] text-white hover:bg-[#e85f41]"
+      : variant === "danger"
+        ? "bg-red-50 text-red-600 border border-red-200 hover:bg-red-100"
+        : "bg-white border border-slate-300 text-slate-700 hover:bg-slate-50"
       } ${className}`}
   >
     {children}
@@ -545,6 +546,9 @@ const RentDashboard: React.FC = () => {
   const [apps, setApps] = useState<RentalApplicationDoc[]>([]);
 
   const [selectedApp, setSelectedApp] = useState<RentalApplicationDoc | null>(null);
+  const [idvOpen, setIdvOpen] = useState<{ open: boolean; refId?: string }>(
+    { open: false, refId: undefined }
+  );
 
   // Persist auth session across reloads
   useEffect(() => {
@@ -615,10 +619,8 @@ const RentDashboard: React.FC = () => {
   };
 
   const handleDoIdVerify = async (appId: string) => {
-    // Integrate your vendor here (Persona, Onfido, Stripe Identity, etc.)
-    // For now we mark as verified.
-    await markIdVerified(appId);
-    setApps((p) => p.map((x) => (x.id === appId ? { ...x, idvStatus: "verified", status: "id_verified" } : x)));
+    setApps((p) => p.map((x) => (x.id === appId ? { ...x, idvStatus: "pending" } : x)));
+    setIdvOpen({ open: true, refId: appId });
   };
 
   const handleUploadTaxes = async (appId: string, files: File[]) => {
@@ -719,6 +721,21 @@ const RentDashboard: React.FC = () => {
         onDoIdVerify={handleDoIdVerify}
         onUploadTaxes={handleUploadTaxes}
       />
+
+      {/* Simple IDV Dialog */}
+      {idvOpen.open && user && (
+        <SimpleIdvDialog
+          isOpen={idvOpen.open}
+          onClose={() => setIdvOpen({ open: false })}
+          referenceId={idvOpen.refId!}
+          userUid={user.uid}
+          onComplete={async () => {
+            if (!idvOpen.refId) return;
+            await markIdVerified(idvOpen.refId);
+            setApps((p) => p.map((x) => (x.id === idvOpen.refId ? { ...x, idvStatus: "verified", status: "id_verified" } : x)));
+          }}
+        />
+      )}
     </Fragment>
   );
 };

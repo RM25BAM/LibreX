@@ -1,5 +1,5 @@
 // src/lib/xrplClient.ts
-import xrpl, { Client } from "xrpl";
+import { Client } from "xrpl";
 
 const XRPL_WS = "wss://s.altnet.rippletest.net:51233"; // XRPL Testnet
 
@@ -7,7 +7,7 @@ let client: Client | null = null;
 
 export async function getClient(): Promise<Client> {
   if (client && client.isConnected()) return client;
-  client = new xrpl.Client(XRPL_WS);
+  client = new Client(XRPL_WS);
   await client.connect();
   return client;
 }

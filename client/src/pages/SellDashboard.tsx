@@ -29,6 +29,7 @@ import { ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage
 
 import { ethers } from "ethers";
 import EscrowAbi from "../contracts/Escrow.json";
+import SimpleIdvDialog from "../components/SimpleIdvDialog";
 
 const db = getFirestore();
 
@@ -198,12 +199,12 @@ const GlassWalletCard = ({ address, balance, network }: { address: string; balan
     initial={{ opacity: 0, y: 20 }}
     animate={{ opacity: 1, y: 0 }}
     transition={{ duration: 0.6, ease: "easeOut" }}
-    className="relative w-full max-w-lg mx-auto rounded-2xl p-6 text-white overflow-hidden bg-slate-800/60 backdrop-blur-xl border border-white/20 shadow-2xl"
+    className="relative w-full max-w-lg mx-auto rounded-lg p-6 text-slate-900 overflow-hidden bg-slate-800/60 backdrop-blur-xl border border-white/20 shadow-2xl"
   >
     <div className="flex items-center justify-between">
       <div className="flex items-center gap-2">
-        <FaEthereum className="text-cyan-300" />
-        <span className="text-sm font-medium">{network}</span>
+        <FaEthereum className="text-slate-200" />
+        <span className="text-sm font-medium text-slate-100">{network}</span>
       </div>
       <Badge className="bg-white/20 text-white">Connected</Badge>
     </div>
@@ -212,18 +213,108 @@ const GlassWalletCard = ({ address, balance, network }: { address: string; balan
       <Identicon address={address} />
       <div>
         <p className="text-sm text-white/80">Wallet Address</p>
-        <p className="text-lg font-mono break-all">{address}</p>
+        <p className="text-lg font-mono break-all text-white">{address}</p>
       </div>
     </div>
 
     <div className="mt-8">
       <p className="text-sm text-white/80">Total Balance</p>
-      <p className="text-4xl font-bold tracking-tight">{balance} XRP</p>
+      <p className="text-4xl font-bold tracking-tight text-white">{balance} XRP</p>
     </div>
 
     <Button
       variant="secondary"
       className="w-full mt-6 !bg-white/10 !border-white/20 !text-white hover:!bg-white/20"
+      onClick={() => navigator.clipboard.writeText(address || "").catch(() => { })}
+    >
+      <FaCopy /> Copy Address
+    </Button>
+  </motion.div>
+);
+
+// Variant with MetaMask styling
+const GlassWalletCardMetaMask = ({ address, balance, onDisconnect }: { address: string; balance: string | number; onDisconnect?: () => void }) => (
+  <motion.div
+    initial={{ opacity: 0, y: 20 }}
+    animate={{ opacity: 1, y: 0 }}
+    transition={{ duration: 0.6, ease: "easeOut" }}
+    className="relative w-full max-w-lg mx-auto rounded-lg p-6 text-slate-900 overflow-hidden bg-gradient-to-br from-amber-500/20 to-rose-500/10 backdrop-blur-xl border border-white/20 shadow-2xl"
+  >
+    <div className="flex items-center justify-between">
+      <div className="flex items-center gap-2">
+        <img src={MetaFox} alt="MetaMask" className="w-5 h-5" />
+        <span className="text-sm font-medium text-slate-800">XRPL EVM Testnet</span>
+      </div>
+      <div className="flex items-center gap-2">
+        <Badge className="bg-green-100 text-green-800">Connected</Badge>
+        {onDisconnect ? (
+          <Button variant="secondary" size="sm" className="!bg-red-600 !text-white hover:!bg-red-700 !border-transparent" onClick={onDisconnect}>Disconnect</Button>
+        ) : null}
+      </div>
+    </div>
+
+    <div className="flex items-center gap-4 mt-8">
+      <Identicon address={address} />
+      <div>
+        <p className="text-sm text-slate-600">Wallet Address</p>
+        <p className="text-lg font-mono break-all text-slate-900">{address}</p>
+      </div>
+    </div>
+
+    <div className="mt-8">
+      <p className="text-sm text-slate-600">Total Balance</p>
+      <p className="text-4xl font-bold tracking-tight text-slate-900">{balance} XRP</p>
+      <p className="text-xs text-slate-600 mt-1">Native token on XRPL EVM</p>
+    </div>
+
+    <Button
+      variant="secondary"
+      className="w-full mt-6 !bg-white !border-slate-300 !text-slate-800 hover:!bg-slate-100"
+      onClick={() => navigator.clipboard.writeText(address || "").catch(() => { })}
+    >
+      <FaCopy /> Copy Address
+    </Button>
+  </motion.div>
+);
+
+// Variant with Crossmark/XRPL styling
+const GlassWalletCardCrossmark = ({ address, balance, onDisconnect }: { address: string; balance: string | number; onDisconnect?: () => void }) => (
+  <motion.div
+    initial={{ opacity: 0, y: 20 }}
+    animate={{ opacity: 1, y: 0 }}
+    transition={{ duration: 0.6, ease: "easeOut" }}
+    className="relative w-full max-w-lg mx-auto rounded-lg p-6 text-slate-900 overflow-hidden bg-gradient-to-br from-blue-500/20 to-cyan-500/10 backdrop-blur-xl border border-white/20 shadow-2xl"
+  >
+    <div className="flex items-center justify-between">
+      <div className="flex items-center gap-2">
+        <img src={CrossMark} alt="Crossmark" className="w-5 h-5" />
+        <span className="text-sm font-medium text-slate-800">XRPL Testnet (L1)</span>
+      </div>
+      <div className="flex items-center gap-2">
+        <Badge className="bg-blue-100 text-blue-800">Connected</Badge>
+        {onDisconnect ? (
+          <Button variant="secondary" size="sm" className="!bg-red-600 !text-white hover:!bg-red-700 !border-transparent" onClick={onDisconnect}>Disconnect</Button>
+        ) : null}
+      </div>
+    </div>
+
+    <div className="flex items-center gap-4 mt-8">
+      <Identicon address={address} />
+      <div>
+        <p className="text-sm text-slate-600">Wallet Address</p>
+        <p className="text-lg font-mono break-all text-slate-900">{address}</p>
+      </div>
+    </div>
+
+    <div className="mt-8">
+      <p className="text-sm text-slate-600">Total Balance</p>
+      <p className="text-4xl font-bold tracking-tight text-slate-900">{balance} XRP</p>
+      <p className="text-xs text-slate-600 mt-1">Native token on XRPL</p>
+    </div>
+
+    <Button
+      variant="secondary"
+      className="w-full mt-6 !bg-white !border-slate-300 !text-slate-800 hover:!bg-slate-100"
       onClick={() => navigator.clipboard.writeText(address || "").catch(() => { })}
     >
       <FaCopy /> Copy Address
@@ -488,7 +579,7 @@ const OfferTimelineModal = ({
                       <div className="mt-3 space-y-2">
                         <div className="text-sm text-slate-600">
                           Upload a document (PDF/JPG/PNG). The demo backend auto-checker approves
-                          if it finds “pre-approval” or enough text; rejects if it finds “denied”.
+                          if it finds "pre-approval" or enough text; rejects if it finds "denied".
                         </div>
                         <div className="flex items-center gap-2">
                           <input
@@ -1162,6 +1253,8 @@ const PaymentsView = ({
   evmAddress,
   onConnectMetaMask,
   onConnectXRPL,
+  onDisconnectWallet,
+  onSwitchWallet,
   xrplAddress,
   xrplBalance,
   xrplBusy,
@@ -1170,6 +1263,8 @@ const PaymentsView = ({
   evmAddress?: string;
   onConnectMetaMask: () => Promise<void>;
   onConnectXRPL: () => Promise<void>;
+  onDisconnectWallet: () => Promise<void>;
+  onSwitchWallet: (walletType: 'metamask' | 'crossmark') => Promise<void>;
   xrplAddress?: string;
   xrplBalance?: string;
   xrplBusy?: boolean;
@@ -1178,39 +1273,85 @@ const PaymentsView = ({
   <div className="space-y-8">
     <div className="text-center">
       <h2 className="text-2xl font-bold text-slate-800">Payments & Wallets</h2>
-      <p className="text-slate-500 mt-1">Manage your connected crypto wallets.</p>
+      <p className="text-slate-500 mt-1">Connect one crypto wallet to manage payments and transactions.</p>
+      <p className="text-xs text-slate-400 mt-2">Note: You can only be connected to one wallet at a time</p>
     </div>
 
+    {/* Current Wallet Status - Glass Cards */}
     {evmAddress ? (
-      <GlassWalletCard address={evmAddress} balance="—" network="XRPL EVM Testnet" />
+      <GlassWalletCardMetaMask address={evmAddress} balance="—" onDisconnect={onDisconnectWallet} />
+    ) : xrplAddress ? (
+      <GlassWalletCardCrossmark address={xrplAddress} balance={xrplBalance ?? "—"} onDisconnect={onDisconnectWallet} />
     ) : null}
 
-    {/* XRPL section */}
+    {/* Wallet Connection Options */}
     <Card>
-      <CardHeader><CardTitle>XRPL Testnet (L1)</CardTitle></CardHeader>
+      <CardHeader>
+        <CardTitle>Connect Wallet</CardTitle>
+        <p className="text-sm text-slate-600">Choose one wallet type to connect</p>
+      </CardHeader>
       <CardContent className="space-y-3">
+        {!evmAddress && !xrplAddress ? (
+          <div className="p-4 bg-amber-50 rounded-lg border border-amber-200 mb-4">
+            <div className="flex items-center gap-2 mb-2">
+              <FaWallet className="text-amber-600" />
+              <span className="font-semibold text-amber-800">No Wallet Connected</span>
+            </div>
+            <p className="text-sm text-amber-700">You need to connect a crypto wallet to manage payments and transactions.</p>
+          </div>
+        ) : null}
+
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Button variant="secondary" className="!justify-start" onClick={onConnectMetaMask}>
-            <img src={MetaFox} alt="MetaMask" className="w-6 h-6 mr-3" /> {evmAddress ? "Reconnect MetaMask" : "Connect MetaMask (EVM)"}
+          <Button
+            variant="secondary"
+            className="!justify-start h-auto p-4"
+            onClick={evmAddress ? () => onSwitchWallet('metamask') : onConnectMetaMask}
+            disabled={!!xrplAddress}
+          >
+            <div className="flex flex-col items-start text-left">
+              <div className="flex items-center gap-2 mb-2">
+                <img src={MetaFox} alt="MetaMask" className="w-6 h-6" />
+                <span className="font-semibold">MetaMask (EVM)</span>
+              </div>
+              <span className="text-xs text-slate-500">XRPL EVM Testnet</span>
+              {evmAddress && <span className="text-xs text-green-600 mt-1">✓ Connected</span>}
+              {!evmAddress && xrplAddress && <span className="text-xs text-blue-600 mt-1">Switch to this wallet</span>}
+            </div>
           </Button>
 
-          <Button variant="secondary" className="!justify-start" onClick={onConnectXRPL}>
-            <img src={CrossMark} alt="Crossmark" className="w-6 h-6 mr-3" /> {xrplAddress ? "Reconnect Crossmark" : "Connect Crossmark (XRPL)"}
+          <Button
+            variant="secondary"
+            className="!justify-start h-auto p-4"
+            onClick={xrplAddress ? () => onSwitchWallet('crossmark') : onConnectXRPL}
+            disabled={!!evmAddress}
+          >
+            <div className="flex flex-col items-start text-left">
+              <div className="flex items-center gap-2 mb-2">
+                <img src={CrossMark} alt="Crossmark" className="w-6 h-6" />
+                <span className="font-semibold">Crossmark (XRPL)</span>
+              </div>
+              <span className="text-xs text-slate-500">XRPL Testnet (L1)</span>
+              {xrplAddress && <span className="text-xs text-green-600 mt-1">✓ Connected</span>}
+              {!xrplAddress && evmAddress && <span className="text-xs text-blue-600 mt-1">Switch to this wallet</span>}
+            </div>
           </Button>
         </div>
 
+        {/* XRPL Test Features */}
         {xrplAddress && (
-          <div className="mt-3 p-3 bg-slate-50 rounded-lg border">
-            <div className="text-sm text-slate-600">XRPL Address</div>
-            <div className="font-mono break-all text-slate-800">{xrplAddress}</div>
-            <div className="mt-2 text-sm text-slate-600">Balance</div>
-            <div className="text-lg font-semibold">{xrplBalance ?? "—"} XRP</div>
-
-            <div className="mt-3">
-              <Button variant="primary" disabled={!!xrplBusy} onClick={onSendTestXrp}>
-                {xrplBusy ? "Submitting…" : "Send Test XRP (self)"}
-              </Button>
-              <div className="text-xs text-slate-500 mt-2">
+          <div className="mt-6 p-4 bg-slate-50 rounded-lg border">
+            <h4 className="font-semibold text-slate-800 mb-3">XRPL Test Features</h4>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-sm text-slate-600">Balance</div>
+                  <div className="text-lg font-semibold">{xrplBalance ?? "—"} XRP</div>
+                </div>
+                <Button variant="primary" disabled={!!xrplBusy} onClick={onSendTestXrp}>
+                  {xrplBusy ? "Submitting…" : "Send Test XRP"}
+                </Button>
+              </div>
+              <div className="text-xs text-slate-500">
                 Uses Crossmark to sign a 1-drop test payment on XRPL Testnet and logs it in Firestore.
               </div>
             </div>
@@ -1233,6 +1374,9 @@ const SellDashboard: React.FC = () => {
   const [userState, setUserState] = useState<AppUser | null>(null);
   const [loadingUser, setLoadingUser] = useState(true);
   const [authError, setAuthError] = useState<string | null>(null);
+  const [idvOpen, setIdvOpen] = useState<{ open: boolean; refId?: string }>(
+    { open: false, refId: undefined }
+  );
 
   const [applicationsCount, setApplicationsCount] = useState(0);
   const [escrowsCount, setEscrowsCount] = useState(0);
@@ -1282,6 +1426,19 @@ const SellDashboard: React.FC = () => {
     })();
   }, [userState, activeRole]);
 
+  // Load existing wallet connections when user state changes
+  useEffect(() => {
+    if (userState) {
+      // Set XRPL address if user has one
+      if (userState.xrplAddress) {
+        setXrplAddress(userState.xrplAddress);
+        // Load balance for XRPL wallet
+        getXrpBalance(userState.xrplAddress).then(setXrplBalance).catch(console.error);
+      }
+      // Note: evmAddress is already in userState, no need to set local state
+    }
+  }, [userState]);
+
   const baseSidebarItems = [
     { name: 'Properties', icon: <FaBuilding />, view: 'properties', roles: ['seller'] },
     { name: 'Offers', icon: <FaTags />, view: 'offers', roles: ['buyer', 'seller'] },
@@ -1300,6 +1457,22 @@ const SellDashboard: React.FC = () => {
         alert("MetaMask not detected. Please install MetaMask.");
         return;
       }
+
+      // Check if user is already connected to XRPL wallet
+      if (userState?.xrplAddress) {
+        const disconnect = confirm("You are already connected to Crossmark (XRPL). Connecting to MetaMask will disconnect your XRPL wallet. Continue?");
+        if (!disconnect) return;
+
+        // Disconnect XRPL wallet first
+        await updateDoc(doc(db, "users", auth.currentUser!.uid), {
+          xrplAddress: null,
+          walletType: null
+        });
+        setUserState((u) => (u ? { ...u, xrplAddress: undefined, walletType: undefined } as AppUser : u));
+        setXrplAddress(undefined);
+        setXrplBalance(undefined);
+      }
+
       const accounts: string[] = await window.ethereum.request({ method: "eth_requestAccounts" });
       const account = (accounts?.[0] || "").toLowerCase();
       if (!account) {
@@ -1314,7 +1487,12 @@ const SellDashboard: React.FC = () => {
       await updateDoc(userRef, { evmAddress: account, walletType: "metamask" });
       setUserState((u) => (u ? { ...u, evmAddress: account, walletType: "metamask" } as AppUser : u));
 
-      try { window.ethereum.removeAllListeners?.("accountsChanged"); } catch { }
+      // Clean up existing listeners and set new ones
+      try {
+        window.ethereum.removeAllListeners?.("accountsChanged");
+        window.ethereum.removeAllListeners?.("chainChanged");
+      } catch { }
+
       window.ethereum.on?.("accountsChanged", async (accs: string[]) => {
         const next = (accs?.[0] || "").toLowerCase();
         if (!auth.currentUser) return;
@@ -1375,6 +1553,20 @@ const SellDashboard: React.FC = () => {
   const handleConnectCrossMark = async () => {
     try {
       setXrplBusy(true);
+
+      // Check if user is already connected to MetaMask wallet
+      if (userState?.evmAddress) {
+        const disconnect = confirm("You are already connected to MetaMask (EVM). Connecting to Crossmark will disconnect your MetaMask wallet. Continue?");
+        if (!disconnect) return;
+
+        // Disconnect MetaMask wallet first
+        await updateDoc(doc(db, "users", auth.currentUser!.uid), {
+          evmAddress: null,
+          walletType: null
+        });
+        setUserState((u) => (u ? { ...u, evmAddress: undefined, walletType: undefined } as AppUser : u));
+      }
+
       const addr = await connectCrossmark(); // opens Crossmark, gets address
       setXrplAddress(addr);
 
@@ -1395,6 +1587,73 @@ const SellDashboard: React.FC = () => {
       alert(e?.message || "Failed to connect Crossmark.");
     } finally {
       setXrplBusy(false);
+    }
+  };
+
+  const handleDisconnectWallet = async () => {
+    try {
+      if (!auth.currentUser) return;
+
+      const userRef = doc(db, "users", auth.currentUser.uid);
+
+      if (userState?.evmAddress) {
+        // Disconnect MetaMask and clean up listeners
+        try {
+          window.ethereum.removeAllListeners?.("accountsChanged");
+          window.ethereum.removeAllListeners?.("chainChanged");
+        } catch { }
+
+        await updateDoc(userRef, {
+          evmAddress: null,
+          walletType: null
+        });
+        setUserState((u) => (u ? { ...u, evmAddress: undefined, walletType: undefined } as AppUser : u));
+        alert("MetaMask wallet disconnected.");
+      } else if (userState?.xrplAddress) {
+        // Disconnect Crossmark
+        await updateDoc(userRef, {
+          xrplAddress: null,
+          walletType: null
+        });
+        setUserState((u) => (u ? { ...u, xrplAddress: undefined, walletType: undefined } as AppUser : u));
+        setXrplAddress(undefined);
+        setXrplBalance(undefined);
+        alert("Crossmark wallet disconnected.");
+      }
+    } catch (e: any) {
+      console.error(e);
+      alert("Failed to disconnect wallet.");
+    }
+  };
+
+  const handleSwitchWallet = async (targetWalletType: 'metamask' | 'crossmark') => {
+    try {
+      if (!auth.currentUser) return;
+
+      const currentWallet = userState?.evmAddress ? 'metamask' : userState?.xrplAddress ? 'crossmark' : null;
+
+      if (currentWallet === targetWalletType) {
+        alert(`You are already connected to ${targetWalletType === 'metamask' ? 'MetaMask' : 'Crossmark'}.`);
+        return;
+      }
+
+      const confirmSwitch = confirm(`Switch from ${currentWallet === 'metamask' ? 'MetaMask' : 'Crossmark'} to ${targetWalletType === 'metamask' ? 'MetaMask' : 'Crossmark'}? This will disconnect your current wallet.`);
+
+      if (!confirmSwitch) return;
+
+      // Disconnect current wallet first
+      await handleDisconnectWallet();
+
+      // Connect to new wallet type
+      if (targetWalletType === 'metamask') {
+        await handleConnectMetaMask();
+      } else {
+        await handleConnectCrossMark();
+      }
+
+    } catch (e: any) {
+      console.error(e);
+      alert("Failed to switch wallet.");
     }
   };
 
@@ -1472,11 +1731,11 @@ const SellDashboard: React.FC = () => {
   // come back to integrate properly strip verify
   const handleStartVerifyId = async (offer: OfferTimelineType) => {
     try {
-      await updateDoc(doc(db, "offers", offer.id), { idvStatus: "verified" });
-      alert("ID verified (demo).");
+      await updateDoc(doc(db, "offers", offer.id), { idvStatus: "pending" });
+      setIdvOpen({ open: true, refId: offer.id });
     } catch (e) {
       console.error(e);
-      alert("Could not set verification status.");
+      alert("Could not start verification.");
     }
   };
 
@@ -1544,6 +1803,8 @@ const SellDashboard: React.FC = () => {
                     evmAddress={userState?.evmAddress}
                     onConnectMetaMask={handleConnectMetaMask}
                     onConnectXRPL={handleConnectCrossMark}
+                    onDisconnectWallet={handleDisconnectWallet}
+                    onSwitchWallet={handleSwitchWallet}
                     xrplAddress={xrplAddress || userState?.xrplAddress}
                     xrplBalance={xrplBalance}
                     xrplBusy={xrplBusy}
@@ -1564,6 +1825,22 @@ const SellDashboard: React.FC = () => {
         onStartVerifyId={handleStartVerifyId}
         onStartCreateEscrow={handleStartCreateEscrow}
       />
+
+      {/* Simple IDV Dialog */}
+      {idvOpen.open && userState && (
+        <SimpleIdvDialog
+          isOpen={idvOpen.open}
+          onClose={() => setIdvOpen({ open: false })}
+          referenceId={idvOpen.refId!}
+          userUid={userState.uid}
+          onComplete={async () => {
+            if (!idvOpen.refId) return;
+            try {
+              await updateDoc(doc(db, "offers", idvOpen.refId), { idvStatus: "verified" });
+            } catch { }
+          }}
+        />
+      )}
     </Fragment>
   );
 };

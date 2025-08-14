@@ -5,24 +5,16 @@ import { auth } from "../../firebase";
 import Logo from '.././../public/logo.svg';
 
 const Navbar = () => {
-    const [navbar, setNavbar] = useState(false);
     const [user, setUser] = useState(null);
     const navigate = useNavigate();
-
-    const changeNav = () => {
-        setNavbar(window.scrollY >= 20);
-    };
 
     useEffect(() => {
         setPersistence(auth, browserLocalPersistence).catch(() => { });
         const unsub = onAuthStateChanged(auth, (u) => {
             setUser(u);
         });
-        window.addEventListener("scroll", changeNav);
-        changeNav();
         return () => {
             unsub();
-            window.removeEventListener("scroll", changeNav);
         };
     }, []);
 
@@ -37,10 +29,7 @@ const Navbar = () => {
     return (
         <nav
             // make it look like zonaprop and zillow had a baby
-            className={`sticky top-0 z-50 flex w-full items-center justify-between h-20 px-4 sm:px-6 lg:px-8  transition-colors duration-300 ${navbar
-                ? "bg-white/70 backdrop-blur-sm border-b border-gray-200"
-                : "bg-transparent"
-                }`}
+            className="sticky top-0 z-50 flex w-full items-center justify-between h-20 px-4 sm:px-6 lg:px-8 transition-colors duration-300 bg-white/70 backdrop-blur-sm border-b border-gray-200"
         >
             {/* Left-side */}
             <div className="flex items-center gap-x-4 md:gap-x-8">
