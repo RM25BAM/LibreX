@@ -37,7 +37,7 @@ const Navbar = () => {
     return (
         <nav
             // make it look like zonaprop and zillow had a baby
-            className={`sticky top-0 z-50 flex w-full items-center justify-between h-20 px-4 sm:px-6 lg:px-8 py-5 transition-colors duration-300 ${navbar
+            className={`sticky top-0 z-50 flex w-full items-center justify-between h-20 px-4 sm:px-6 lg:px-8  transition-colors duration-300 ${navbar
                 ? "bg-white/70 backdrop-blur-sm border-b border-gray-200"
                 : "bg-transparent"
                 }`}
