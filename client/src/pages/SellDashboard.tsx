@@ -1580,6 +1580,27 @@ const SellDashboard: React.FC = () => {
         const role = userDoc.activeRole === 'seller' ? 'seller' : 'buyer';
         setActiveRole(role);
         if (role === 'buyer' && activeView === 'properties') setActiveView('offers');
+
+        // Set up real-time listener for user document updates
+        const userDocRef = doc(db, 'users', u.uid);
+        const userUnsub = onSnapshot(userDocRef, (snap) => {
+          if (snap.exists()) {
+            const updatedUser = { uid: snap.id, ...snap.data() } as AppUser;
+            setUserState(updatedUser);
+
+            // Update local wallet state to match user state
+            if (updatedUser.xrplAddress !== xrplAddress) {
+              setXrplAddress(updatedUser.xrplAddress);
+              if (updatedUser.xrplAddress) {
+                getXrpBalance(updatedUser.xrplAddress).then(setXrplBalance).catch(console.error);
+              } else {
+                setXrplBalance(undefined);
+              }
+            }
+          }
+        });
+
+        return () => userUnsub();
       } catch (e: any) {
         setAuthError(e?.message || 'Failed to load user profile.');
       } finally {
@@ -1606,18 +1627,7 @@ const SellDashboard: React.FC = () => {
     })();
   }, [userState, activeRole]);
 
-  // Load existing wallet connections when user state changes
-  useEffect(() => {
-    if (userState) {
-      // Set XRPL address if user has one
-      if (userState.xrplAddress) {
-        setXrplAddress(userState.xrplAddress);
-        // Load balance for XRPL wallet
-        getXrpBalance(userState.xrplAddress).then(setXrplBalance).catch(console.error);
-      }
-      // Note: evmAddress is already in userState, no need to set local state
-    }
-  }, [userState]);
+
 
   const baseSidebarItems = [
     { name: 'Properties', icon: <FaBuilding />, view: 'properties', roles: ['seller'] },
@@ -1631,15 +1641,15 @@ const SellDashboard: React.FC = () => {
     else window.location.href = "/login";
   };
 
-  const handleConnectMetaMask = async () => {
+  const handleConnectMetaMask = async (isSwitching: boolean = false) => {
     try {
       if (!window.ethereum) {
         alert("MetaMask not detected. Please install MetaMask.");
         return;
       }
 
-      // Check if user is already connected to XRPL wallet
-      if (userState?.xrplAddress) {
+      // Check if user is already connected to XRPL wallet (only if not switching)
+      if (!isSwitching && userState?.xrplAddress) {
         const disconnect = confirm("You are already connected to Crossmark (XRPL). Connecting to MetaMask will disconnect your XRPL wallet. Continue?");
         if (!disconnect) return;
 
@@ -1648,9 +1658,7 @@ const SellDashboard: React.FC = () => {
           xrplAddress: null,
           walletType: null
         });
-        setUserState((u) => (u ? { ...u, xrplAddress: undefined, walletType: undefined } as AppUser : u));
-        setXrplAddress(undefined);
-        setXrplBalance(undefined);
+        // Local state will be updated by the real-time listener
       }
 
       const accounts: string[] = await window.ethereum.request({ method: "eth_requestAccounts" });
@@ -1663,9 +1671,9 @@ const SellDashboard: React.FC = () => {
         alert("You must be signed in to connect a wallet.");
         return;
       }
-      const userRef = doc(db, "users", auth.currentUser.uid);
+      const userRef = doc(db, "users", auth.currentUser!.uid);
       await updateDoc(userRef, { evmAddress: account, walletType: "metamask" });
-      setUserState((u) => (u ? { ...u, evmAddress: account, walletType: "metamask" } as AppUser : u));
+      // Local state will be updated by the real-time listener
 
       // Clean up existing listeners and set new ones
       try {
@@ -1677,7 +1685,7 @@ const SellDashboard: React.FC = () => {
         const next = (accs?.[0] || "").toLowerCase();
         if (!auth.currentUser) return;
         await updateDoc(userRef, { evmAddress: next || null });
-        setUserState((u) => (u ? { ...u, evmAddress: next || undefined } as AppUser : u));
+        // Local state will be updated by the real-time listener
       });
 
       window.ethereum.on?.("chainChanged", (_chainId: string) => {
@@ -1730,12 +1738,12 @@ const SellDashboard: React.FC = () => {
     }
   };
 
-  const handleConnectCrossMark = async () => {
+  const handleConnectCrossMark = async (isSwitching: boolean = false) => {
     try {
       setXrplBusy(true);
 
-      // Check if user is already connected to MetaMask wallet
-      if (userState?.evmAddress) {
+      // Check if user is already connected to MetaMask wallet (only if not switching)
+      if (!isSwitching && userState?.evmAddress) {
         const disconnect = confirm("You are already connected to MetaMask (EVM). Connecting to Crossmark will disconnect your MetaMask wallet. Continue?");
         if (!disconnect) return;
 
@@ -1744,20 +1752,20 @@ const SellDashboard: React.FC = () => {
           evmAddress: null,
           walletType: null
         });
-        setUserState((u) => (u ? { ...u, evmAddress: undefined, walletType: undefined } as AppUser : u));
+        // Local state will be updated by the real-time listener
       }
 
       const addr = await connectCrossmark(); // opens Crossmark, gets address
-      setXrplAddress(addr);
 
       if (auth.currentUser) {
         await updateDoc(doc(db, "users", auth.currentUser.uid), {
           xrplAddress: addr,
           walletType: "crossmark",
         });
-        setUserState(u => u ? { ...u, xrplAddress: addr, walletType: "crossmark" } : u);
+        // Local state will be updated by the real-time listener
       }
 
+      // Load balance for the new address
       const bal = await getXrpBalance(addr);
       setXrplBalance(bal);
 
@@ -1787,7 +1795,7 @@ const SellDashboard: React.FC = () => {
           evmAddress: null,
           walletType: null
         });
-        setUserState((u) => (u ? { ...u, evmAddress: undefined, walletType: undefined } as AppUser : u));
+        // Local state will be updated by the real-time listener
         alert("MetaMask wallet disconnected.");
       } else if (userState?.xrplAddress) {
         // Disconnect Crossmark
@@ -1795,9 +1803,7 @@ const SellDashboard: React.FC = () => {
           xrplAddress: null,
           walletType: null
         });
-        setUserState((u) => (u ? { ...u, xrplAddress: undefined, walletType: undefined } as AppUser : u));
-        setXrplAddress(undefined);
-        setXrplBalance(undefined);
+        // Local state will be updated by the real-time listener
         alert("Crossmark wallet disconnected.");
       }
     } catch (e: any) {
@@ -1826,9 +1832,9 @@ const SellDashboard: React.FC = () => {
 
       // Connect to new wallet type
       if (targetWalletType === 'metamask') {
-        await handleConnectMetaMask();
+        await handleConnectMetaMask(true);
       } else {
-        await handleConnectCrossMark();
+        await handleConnectCrossMark(true);
       }
 
     } catch (e: any) {
