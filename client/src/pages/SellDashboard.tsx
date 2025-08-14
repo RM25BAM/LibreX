@@ -565,9 +565,22 @@ const OfferTimelineModal = ({
                 Offer for {offer.propertyAddress || `#${o.propertyId}`} • {formatMoney(o.amount, o.currency)}
               </p>
             </div>
-            <button onClick={onClose} aria-label="Close" className="p-2 rounded-full hover:bg-slate-100">
-              <FaTimes />
-            </button>
+            <div className="flex items-center gap-2">
+              {/* Cancel Escrow Button */}
+              {escrowCreated && (
+                <Button
+                  variant="danger"
+                  size="sm"
+                  onClick={() => setCancelEscrowOpen({ open: true, offerId: o.id })}
+                  className="bg-red-600 hover:bg-red-700 text-white"
+                >
+                  <FaTimes /> Cancel Escrow
+                </Button>
+              )}
+              <button onClick={onClose} aria-label="Close" className="p-2 rounded-full hover:bg-slate-100">
+                <FaTimes />
+              </button>
+            </div>
           </CardHeader>
 
           <CardContent className="py-8">
@@ -768,6 +781,36 @@ const OfferTimelineModal = ({
                     <p className="text-sm text-slate-500">
                       {documentStepState === "complete" ? "Pending final review and signatures." : "Waiting on documents."}
                     </p>
+
+                    {/* Seller actions for final approval */}
+                    {role === "seller" && documentStepState === "complete" && (
+                      <div className="mt-3 space-y-2">
+                        <p className="text-xs text-slate-600">Review the uploaded documents and make your decision:</p>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="primary"
+                            onClick={() => handleFinalApproval(o.id, "approved")}
+                            className="bg-green-600 hover:bg-green-700"
+                          >
+                            <FaCheckCircle /> Accept & Approve
+                          </Button>
+                          <Button
+                            variant="danger"
+                            onClick={() => handleFinalApproval(o.id, "rejected")}
+                            className="bg-red-600 hover:bg-red-700"
+                          >
+                            <FaTimes /> Reject
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Buyer actions for final approval */}
+                    {role === "buyer" && documentStepState === "complete" && (
+                      <div className="mt-3">
+                        <p className="text-xs text-slate-600">Waiting for seller to review and approve your documents.</p>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -775,12 +818,36 @@ const OfferTimelineModal = ({
                 <div className="relative flex items-start gap-4">
                   <div className="absolute left-[-2px] top-1 h-8 w-8 bg-white rounded-full flex items-center justify-center">
                     <div className="h-5 w-5 rounded-full bg-white flex items-center justify-center">
-                      <StepIcon state={"pending"} />
+                      <StepIcon state={
+                        (o as any)?.finalApprovalStatus === "final_approved" ? "complete" : "pending"
+                      } />
                     </div>
                   </div>
                   <div className="ml-8">
                     <p className="font-semibold text-slate-800">Funds Released</p>
-                    <p className="text-sm text-slate-500">Transaction complete and funds released.</p>
+                    <p className="text-sm text-slate-500">
+                      {(o as any)?.finalApprovalStatus === "final_approved"
+                        ? "Final approval granted. Funds can be released to seller."
+                        : "Waiting for final approval from seller."}
+                    </p>
+
+                    {/* Show final approval status */}
+                    {(o as any)?.finalApprovalStatus && (
+                      <div className="mt-2">
+                        <Badge className={
+                          (o as any)?.finalApprovalStatus === "final_approved"
+                            ? "bg-green-100 text-green-800"
+                            : "bg-red-100 text-red-800"
+                        }>
+                          {(o as any)?.finalApprovalStatus === "final_approved" ? "Approved" : "Rejected"}
+                        </Badge>
+                        {(o as any)?.finalApprovalAt && (
+                          <span className="text-xs text-slate-500 ml-2">
+                            {(o as any)?.finalApprovalAt?.toDate?.()?.toLocaleDateString() || "Recently"}
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -1498,6 +1565,9 @@ const SellDashboard: React.FC = () => {
   const [idvOpen, setIdvOpen] = useState<{ open: boolean; refId?: string }>(
     { open: false, refId: undefined }
   );
+  const [cancelEscrowOpen, setCancelEscrowOpen] = useState<{ open: boolean; offerId?: string }>(
+    { open: false, offerId: undefined }
+  );
 
   const [applicationsCount, setApplicationsCount] = useState(0);
   const [escrowsCount, setEscrowsCount] = useState(0);
@@ -1860,8 +1930,40 @@ const SellDashboard: React.FC = () => {
     }
   };
 
+  const handleFinalApproval = async (offerId: string, decision: "approved" | "rejected") => {
+    try {
+      const status = decision === "approved" ? "final_approved" : "final_rejected";
+      await updateDoc(doc(db, "offers", offerId), {
+        finalApprovalStatus: status,
+        finalApprovalAt: new Date()
+      });
 
+      if (decision === "approved") {
+        alert("Documents approved! Transaction can proceed to funding.");
+      } else {
+        alert("Documents rejected. Buyer will need to provide additional documentation.");
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Could not update approval status.");
+    }
+  };
 
+  const handleCancelEscrow = async (offerId: string) => {
+    try {
+      await updateDoc(doc(db, "offers", offerId), {
+        escrowStatus: "cancelled",
+        escrowCancelledAt: new Date(),
+        state: "ESCROW_CANCELLED"
+      });
+
+      alert("Escrow cancelled successfully.");
+      setCancelEscrowOpen({ open: false });
+    } catch (e) {
+      console.error(e);
+      alert("Could not cancel escrow.");
+    }
+  };
 
   if (loadingUser) return <div className="h-screen flex items-center justify-center text-slate-600">Loading dashboard…</div>;
   if (authError) return <div className="h-screen flex items-center justify-center text-red-600">{authError}</div>;
@@ -1965,6 +2067,66 @@ const SellDashboard: React.FC = () => {
             }
           }}
         />
+      )}
+
+      {/* Cancel Escrow Modal */}
+      {cancelEscrowOpen.open && (
+        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl">
+            <div className="p-5 border-b border-slate-200 flex items-center justify-between">
+              <div className="flex items-center gap-2 text-slate-800 font-semibold">
+                <FaTimes className="text-red-600" /> Cancel Escrow
+              </div>
+              <button
+                onClick={() => setCancelEscrowOpen({ open: false })}
+                className="p-2 rounded-full hover:bg-slate-100"
+              >
+                <FaTimes />
+              </button>
+            </div>
+            <div className="p-5 space-y-4">
+              <div className="text-center">
+                <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <FaTimes className="text-red-600 text-2xl" />
+                </div>
+                <h3 className="text-lg font-semibold text-slate-800 mb-2">Cancel Escrow?</h3>
+                <p className="text-slate-600">
+                  This action will cancel the escrow and return any funds to the buyer.
+                  This action cannot be undone.
+                </p>
+              </div>
+
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                <div className="flex items-start gap-2">
+                  <div className="text-amber-600 mt-0.5">⚠️</div>
+                  <div className="text-sm text-amber-800">
+                    <strong>Warning:</strong> Cancelling the escrow will:
+                    <ul className="list-disc list-inside mt-2 space-y-1">
+                      <li>Return all funds to the buyer</li>
+                      <li>Close the escrow contract</li>
+                      <li>Require a new escrow to be created if the transaction continues</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="p-5 border-t border-slate-200 flex justify-end gap-3">
+              <Button
+                variant="secondary"
+                onClick={() => setCancelEscrowOpen({ open: false })}
+              >
+                Keep Escrow
+              </Button>
+              <Button
+                variant="danger"
+                onClick={() => handleCancelEscrow(cancelEscrowOpen.offerId!)}
+                className="bg-red-600 hover:bg-red-700"
+              >
+                Yes, Cancel Escrow
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
     </Fragment>
   );
