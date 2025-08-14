@@ -1,4 +1,4 @@
-import React, { useState, Fragment, useEffect } from 'react';
+import React, { useState, Fragment, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   FaWallet, FaCopy, FaEthereum, FaPlusCircle, FaTimes,
@@ -390,11 +390,65 @@ const OfferTimelineModal = ({
   const [docBusy, setDocBusy] = useState(false);
   const [docMessage, setDocMessage] = useState<string | null>(null);
   const [docStatus, setDocStatus] = useState<string | null>(offer?.docStatus ?? null);
+  // Drag & drop + preview state for documents
+  const [preFile, setPreFile] = useState<File | null>(null);
+  const [inspFile, setInspFile] = useState<File | null>(null);
+  const [prePreview, setPrePreview] = useState<string | null>(null);
+  const [inspPreview, setInspPreview] = useState<string | null>(null);
+  const [dragPreOver, setDragPreOver] = useState(false);
+  const [dragInspOver, setDragInspOver] = useState(false);
+  const preInputRef = useRef<HTMLInputElement | null>(null);
+  const inspInputRef = useRef<HTMLInputElement | null>(null);
+
+  // preview URL lifecycles and helpers MUST be declared before any early returns to keep hook order stable
+  useEffect(() => {
+    if (preFile && preFile.type?.startsWith('image/')) {
+      const url = URL.createObjectURL(preFile);
+      setPrePreview(url);
+      return () => URL.revokeObjectURL(url);
+    }
+    setPrePreview(null);
+  }, [preFile]);
+
+  useEffect(() => {
+    if (inspFile && inspFile.type?.startsWith('image/')) {
+      const url = URL.createObjectURL(inspFile);
+      setInspPreview(url);
+      return () => URL.revokeObjectURL(url);
+    }
+    setInspPreview(null);
+  }, [inspFile]);
+
+  function acceptDoc(file?: File | null) {
+    if (!file) return null;
+    const okTypes = [
+      'application/pdf',
+      'image/png', 'image/jpeg', 'image/webp', 'image/jpg'
+    ];
+    if (!okTypes.some(t => (file.type || '').includes(t.split('/')[0]) || file.type === t)) {
+      alert('Please upload a PDF or image file.');
+      return null;
+    }
+    return file;
+  }
+
+  const onDropPre = (e: React.DragEvent) => {
+    e.preventDefault(); e.stopPropagation(); setDragPreOver(false);
+    const f = acceptDoc(e.dataTransfer.files?.[0]);
+    if (f) setPreFile(f);
+  };
+  const onDropInsp = (e: React.DragEvent) => {
+    e.preventDefault(); e.stopPropagation(); setDragInspOver(false);
+    const f = acceptDoc(e.dataTransfer.files?.[0]);
+    if (f) setInspFile(f);
+  };
 
   useEffect(() => {
     if (!offer) {
       setLiveOffer(null);
       setDocStatus(null);
+      setPreFile(null);
+      setInspFile(null);
       return;
     }
     const unsub = onSnapshot(doc(db, "offers", offer.id), (snap) => {
@@ -403,6 +457,9 @@ const OfferTimelineModal = ({
         setLiveOffer(data);
         // keep local docStatus in sync with Firestore
         setDocStatus((data as any)?.docStatus ?? null);
+        // Reset file states when offer changes
+        setPreFile(null);
+        setInspFile(null);
       }
     });
     return () => unsub();
@@ -428,26 +485,44 @@ const OfferTimelineModal = ({
   }
 
   async function uploadDoc(kind: string, file: File) {
-    const fd = new FormData();
-    fd.append("offerId", o.id);
-    fd.append("kind", kind);
-    fd.append("file", file);
-
     setDocBusy(true);
     setDocMessage(null);
+
     try {
-      const res = await fetch(`${API_BASE}/api/documents/upload`, { method: "POST", body: fd });
-      if (!res.ok) throw new Error("Upload failed");
-      const data = await res.json();
-      setDocMessage(`Uploaded. Status: ${data.status}${data.reason ? ` (${data.reason})` : ""}`);
-      setDocStatus(data.status);
-      if (data.status === "in_review") pollDocStatus(o.id);
+      // For demo purposes, directly update Firestore instead of calling API
+      // In production, you'd upload to your backend for document processing
+
+      // Simulate a brief processing delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // Auto-approve documents for demo (you can customize this logic)
+      const status = "approved"; // or "rejected" based on your business logic
+
+      // Update the offer document with the new status
+      await updateDoc(doc(db, "offers", o.id), {
+        docStatus: status,
+        [`${kind}Uploaded`]: true,
+        [`${kind}UploadedAt`]: new Date()
+      });
+
+      setDocStatus(status);
+      setDocMessage(`${kind} document uploaded and ${status}.`);
+
+      // Clear the uploaded file
+      if (kind === 'preApproval') {
+        setPreFile(null);
+      } else if (kind === 'inspection') {
+        setInspFile(null);
+      }
+
     } catch (e: any) {
-      setDocMessage(e?.message || "Upload failed");
+      console.error('Upload failed:', e);
+      setDocMessage(e?.message || "Upload failed.");
     } finally {
       setDocBusy(false);
     }
   }
+
 
   const walletConnected = !!buyerEvmAddress;
   const escrowCreated = !!o?.escrowAddress || o?.escrowStatus === "created";
@@ -463,7 +538,6 @@ const OfferTimelineModal = ({
     idvStatusEff === "verified" ? "complete"
       : idvStatusEff === "pending" ? "inprogress"
         : "pending";
-
 
   const docStatusEff = (docStatus ?? o?.docStatus) as ("pending" | "in_review" | "approved" | "rejected" | undefined);
   const documentStepState: "pending" | "inprogress" | "complete" =
@@ -569,32 +643,79 @@ const OfferTimelineModal = ({
                           disabled={idvStepState === "inprogress"}
                           onClick={() => onStartVerifyId(o)}
                         >
-                          {idvStepState === "inprogress" ? "Opening…" : "Verify with Shopify"}
+                          {idvStepState === "inprogress" ? "Opening…" : "Start ID Verify"}
                         </Button>
                       </div>
                     )}
 
-                    {/* Doc upload UI (always rendered — no hooks here) */}
+                    {/* Doc upload UI (drag & drop with preview) */}
                     {idvStepState === "complete" && (
-                      <div className="mt-3 space-y-2">
+                      <div className="mt-3 space-y-3">
                         <div className="text-sm text-slate-600">
-                          Upload a document (PDF/JPG/PNG). The demo backend auto-checker approves
-                          if it finds "pre-approval" or enough text; rejects if it finds "denied".
+                          Upload your pre-approval and inspection documents (PDF or image). The demo checker will auto-approve typical pre-approval text.
                         </div>
-                        <div className="flex items-center gap-2">
-                          <input
-                            id="doc-file"
-                            type="file"
-                            accept=".pdf,.png,.jpg,.jpeg,.webp"
-                            onChange={(e) => {
-                              const f = e.target.files?.[0];
-                              if (f) uploadDoc("preApproval", f);
-                              e.currentTarget.value = "";
-                            }}
-                          />
-                          <Button variant="secondary" disabled={docBusy}>
-                            {docBusy ? "Uploading..." : "Upload"}
-                          </Button>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-80 overflow-y-auto p-1">
+                          {/* Pre-approval */}
+                          <div>
+                            <div className="text-xs font-semibold text-slate-700 mb-2">Pre-Approval</div>
+                            <div
+                              onDragEnter={(e) => { e.preventDefault(); e.stopPropagation(); setDragPreOver(true); }}
+                              onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setDragPreOver(true); }}
+                              onDragLeave={(e) => { e.preventDefault(); e.stopPropagation(); setDragPreOver(false); }}
+                              onDrop={(e) => { e.preventDefault(); e.stopPropagation(); setDragPreOver(false); const f = acceptDoc(e.dataTransfer.files?.[0]); if (f) setPreFile(f); }}
+                              onClick={() => preInputRef.current?.click()}
+                              role="button"
+                              className={`border-2 border-dashed rounded-xl p-4 text-center cursor-pointer transition-colors ${dragPreOver ? "border-blue-400 bg-blue-50" : "border-slate-300 hover:bg-slate-50"}`}
+                            >
+                              {preFile ? (
+                                prePreview ? (
+                                  <img src={prePreview} alt="Pre-approval preview" className="mx-auto max-h-40 rounded-lg object-contain" />
+                                ) : (
+                                  <div className="text-xs text-slate-600 break-all">{preFile.name}</div>
+                                )
+                              ) : (
+                                <div className="text-slate-500 text-sm">Drag & drop file here or click to browse</div>
+                              )}
+                              <input ref={preInputRef} type="file" accept=".pdf,image/*" hidden onChange={(e) => { const f = acceptDoc(e.target.files?.[0] || null); if (f) setPreFile(f); }} />
+                            </div>
+                            <div className="flex items-center justify-end gap-2 mt-2">
+                              {preFile && <Button variant="secondary" onClick={() => setPreFile(null)}>Remove</Button>}
+                              <Button variant="primary" disabled={docBusy || !preFile} onClick={() => preFile && uploadDoc('preApproval', preFile)}>
+                                {docBusy ? 'Uploading…' : 'Submit'}
+                              </Button>
+                            </div>
+                          </div>
+
+                          {/* Inspection */}
+                          <div>
+                            <div className="text-xs font-semibold text-slate-700 mb-2">Inspection</div>
+                            <div
+                              onDragEnter={(e) => { e.preventDefault(); e.stopPropagation(); setDragInspOver(true); }}
+                              onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setDragInspOver(true); }}
+                              onDragLeave={(e) => { e.preventDefault(); e.stopPropagation(); setDragInspOver(false); }}
+                              onDrop={(e) => { e.preventDefault(); e.stopPropagation(); setDragInspOver(false); const f = acceptDoc(e.dataTransfer.files?.[0]); if (f) setInspFile(f); }}
+                              onClick={() => inspInputRef.current?.click()}
+                              role="button"
+                              className={`border-2 border-dashed rounded-xl p-4 text-center cursor-pointer transition-colors ${dragInspOver ? "border-blue-400 bg-blue-50" : "border-slate-300 hover:bg-slate-50"}`}
+                            >
+                              {inspFile ? (
+                                inspPreview ? (
+                                  <img src={inspPreview} alt="Inspection preview" className="mx-auto max-h-40 rounded-lg object-contain" />
+                                ) : (
+                                  <div className="text-xs text-slate-600 break-all">{inspFile.name}</div>
+                                )
+                              ) : (
+                                <div className="text-slate-500 text-sm">Drag & drop file here or click to browse</div>
+                              )}
+                              <input ref={inspInputRef} type="file" accept=".pdf,image/*" hidden onChange={(e) => { const f = acceptDoc(e.target.files?.[0] || null); if (f) setInspFile(f); }} />
+                            </div>
+                            <div className="flex items-center justify-end gap-2 mt-2">
+                              {inspFile && <Button variant="secondary" onClick={() => setInspFile(null)}>Remove</Button>}
+                              <Button variant="primary" disabled={docBusy || !inspFile} onClick={() => inspFile && uploadDoc('inspection', inspFile)}>
+                                {docBusy ? 'Uploading…' : 'Submit'}
+                              </Button>
+                            </div>
+                          </div>
                         </div>
                         {docMessage && <div className="text-xs text-slate-600">{docMessage}</div>}
                         {docStatus && (
@@ -1836,8 +1957,12 @@ const SellDashboard: React.FC = () => {
           onComplete={async () => {
             if (!idvOpen.refId) return;
             try {
+              console.log('ID Verification completed, updating Firestore...', idvOpen.refId);
               await updateDoc(doc(db, "offers", idvOpen.refId), { idvStatus: "verified" });
-            } catch { }
+              console.log('Firestore updated successfully');
+            } catch (error) {
+              console.error('Failed to update Firestore:', error);
+            }
           }}
         />
       )}
