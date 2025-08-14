@@ -375,6 +375,8 @@ const OfferTimelineModal = ({
   offer,
   role,
   buyerEvmAddress,
+  buyerXrplAddress,
+  buyerWalletType,
   onClose,
   onStartVerifyId,
   onStartCreateEscrow,
@@ -383,10 +385,13 @@ const OfferTimelineModal = ({
   offer: OfferTimelineType | null;
   role: "buyer" | "seller";
   buyerEvmAddress?: string;
+  buyerXrplAddress?: string;
+  buyerWalletType?: "metamask" | "crossmark" | "CrossMark" | "email" | "dynamyx";
   onClose: () => void;
   onStartVerifyId: (offer: OfferTimelineType) => Promise<void>;
   onStartCreateEscrow: (offer: OfferTimelineType) => Promise<void>;
   onFinalApproval: (offerId: string, decision: "approved" | "rejected") => Promise<void>;
+  onCancelEscrow: (offerId: string) => void;
 }) => {
   const [liveOffer, setLiveOffer] = useState<OfferTimelineType | null>(offer);
   const [docBusy, setDocBusy] = useState(false);
@@ -456,6 +461,7 @@ const OfferTimelineModal = ({
     const unsub = onSnapshot(doc(db, "offers", offer.id), (snap) => {
       if (snap.exists()) {
         const data = { id: snap.id, ...(snap.data() as any) } as OfferTimelineType;
+
         setLiveOffer(data);
         // keep local docStatus in sync with Firestore
         setDocStatus((data as any)?.docStatus ?? null);
@@ -497,8 +503,10 @@ const OfferTimelineModal = ({
       // Simulate a brief processing delay
       await new Promise(resolve => setTimeout(resolve, 1000));
 
-      // Auto-approve documents for demo (you can customize this logic)
-      const status = "approved"; // or "rejected" based on your business logic
+      // Simple MVP verification: auto-approve documents
+      const status = "approved"; // Auto-approve for MVP
+
+
 
       // Update the offer document with the new status
       await updateDoc(doc(db, "offers", o.id), {
@@ -526,11 +534,13 @@ const OfferTimelineModal = ({
   }
 
 
-  const walletConnected = !!buyerEvmAddress;
+  const walletConnected = !!buyerEvmAddress || !!buyerXrplAddress;
   const escrowCreated = !!o?.escrowAddress || o?.escrowStatus === "created";
   const escrowCreating = o?.escrowStatus === "creating";
   const escrowErrored = o?.escrowStatus === "error";
   const escrowErrorMsg = (o as any)?.escrowError || null;
+
+
 
   const escrowStepState: "pending" | "inprogress" | "complete" =
     escrowCreated ? "complete" : escrowCreating ? "inprogress" : "pending";
@@ -572,9 +582,8 @@ const OfferTimelineModal = ({
               {escrowCreated && (
                 <Button
                   variant="danger"
-                  size="sm"
-                  onClick={() => setCancelEscrowOpen({ open: true, offerId: o.id })}
                   className="bg-red-600 hover:bg-red-700 text-white"
+                  onClick={() => onCancelEscrow(o.id)}
                 >
                   <FaTimes /> Cancel Escrow
                 </Button>
@@ -602,12 +611,12 @@ const OfferTimelineModal = ({
                       {!walletConnected
                         ? "Wallet not connected."
                         : escrowCreated
-                          ? `Escrow created${o?.escrowAddress ? ` at ${o.escrowAddress}` : ""}.`
+                          ? `Escrow created${o?.escrowAddress ? ` at ${o.escrowAddress}` : ""} on XRPL EVM sidechain.`
                           : escrowCreating
                             ? "Creating escrow…"
                             : escrowErrored
                               ? "Escrow creation failed."
-                              : "Click below to create escrow to proceed."}
+                              : "Click below to create escrow on XRPL EVM sidechain."}
                     </p>
 
                     {escrowErrored && (
@@ -623,7 +632,7 @@ const OfferTimelineModal = ({
                           disabled={escrowCreating}
                           onClick={() => onStartCreateEscrow(o)}
                         >
-                          {escrowCreating ? "Creating…" : escrowErrored ? "Retry Create Escrow" : "Create Escrow"}
+                          {escrowCreating ? "Creating…" : escrowErrored ? "Retry Create Escrow" : "Create EVM Escrow"}
                         </Button>
                       </div>
                     )}
@@ -649,12 +658,24 @@ const OfferTimelineModal = ({
                             : "Waiting for documents."}
                     </p>
 
+                    {/* ID Verification Button - only show for buyers when escrow is created */}
+                    {role === "buyer" && escrowCreated && idvStepState !== "complete" && (
+                      <div className="mt-3">
+                        <Button
+                          variant="primary"
+                          disabled={idvStepState === "inprogress"}
+                          onClick={() => onStartVerifyId(o)}
+                        >
+                          {idvStepState === "inprogress" ? "Opening…" : "Start ID Verify"}
+                        </Button>
+                      </div>
+                    )}
 
                     {/* Doc upload UI (drag & drop with preview) */}
                     {idvStepState === "complete" && (
                       <div className="mt-3 space-y-3">
                         <div className="text-sm text-slate-600">
-                          Upload your pre-approval and inspection documents (PDF or image). The demo checker will auto-approve typical pre-approval text.
+                          Upload your pre-approval and inspection documents (PDF or image). For MVP, documents are automatically approved.
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-80 overflow-y-auto p-1">
                           {/* Pre-approval */}
@@ -1274,6 +1295,7 @@ async function initEscrowDoc(
     },
     milestones: { preApproval: "pending", inspection: "pending" },
     escrowAddress: data.escrowAddress,
+    escrowType: "evm",
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   });
@@ -1755,21 +1777,71 @@ const SellDashboard: React.FC = () => {
         // Local state will be updated by the real-time listener
       }
 
-      const addr = await connectCrossmark(); // opens Crossmark, gets address
+      // Connect to Crossmark and get XRPL address
+      const xrplAddr = await connectCrossmark(); // opens Crossmark, gets XRPL address
+      setXrplAddress(xrplAddr);
+
+      // Now connect to XRPL EVM sidechain using Crossmark
+      if (!window.ethereum) {
+        throw new Error("Crossmark EVM not available. Please ensure Crossmark supports EVM.");
+      }
+
+      // Switch to XRPL EVM sidechain
+      try {
+        await window.ethereum.request({
+          method: "wallet_switchEthereumChain",
+          params: [{ chainId: XRPL_EVM_PARAMS.chainId }],
+        });
+      } catch (err: any) {
+        if (err?.code === 4902) {
+          // Chain not added, add it
+          await window.ethereum.request({
+            method: "wallet_addEthereumChain",
+            params: [XRPL_EVM_PARAMS],
+          });
+        } else {
+          throw err;
+        }
+      }
+
+      // Request EVM account from Crossmark
+      const accounts: string[] = await window.ethereum.request({ method: "eth_requestAccounts" });
+      const evmAddr = (accounts?.[0] || "").toLowerCase();
+      if (!evmAddr) {
+        throw new Error("No EVM account selected from Crossmark");
+      }
 
       if (auth.currentUser) {
         await updateDoc(doc(db, "users", auth.currentUser.uid), {
-          xrplAddress: addr,
+          xrplAddress: xrplAddr,
+          evmAddress: evmAddr,
           walletType: "crossmark",
         });
         // Local state will be updated by the real-time listener
       }
 
-      // Load balance for the new address
-      const bal = await getXrpBalance(addr);
+      // Load XRPL balance for the XRPL address
+      const bal = await getXrpBalance(xrplAddr);
       setXrplBalance(bal);
 
-      alert("Crossmark connected.");
+      // Set up Crossmark EVM event listeners
+      try {
+        window.ethereum.removeAllListeners?.("accountsChanged");
+        window.ethereum.removeAllListeners?.("chainChanged");
+      } catch { }
+
+      window.ethereum.on?.("accountsChanged", async (accs: string[]) => {
+        const next = (accs?.[0] || "").toLowerCase();
+        if (!auth.currentUser) return;
+        await updateDoc(doc(db, "users", auth.currentUser.uid), { evmAddress: next || null });
+        // Local state will be updated by the real-time listener
+      });
+
+      window.ethereum.on?.("chainChanged", (_chainId: string) => {
+        // Could refresh or update UI
+      });
+
+      alert("Crossmark connected to XRPL EVM sidechain successfully.");
     } catch (e: any) {
       console.error(e);
       alert(e?.message || "Failed to connect Crossmark.");
@@ -1843,11 +1915,18 @@ const SellDashboard: React.FC = () => {
     }
   };
 
-  /* escrow create: deploy on XRPL EVM + write escrows/{offerId} */
+  /* escrow create: deploy on XRPL EVM sidechain */
   const handleStartCreateEscrow = async (offer: OfferTimelineType) => {
     try {
       if (!auth.currentUser) throw new Error("Not signed in");
-      if (!userState?.evmAddress) throw new Error("Connect MetaMask first");
+
+      // Check if buyer has a wallet connected
+      const buyerWalletType = userState?.walletType;
+      if (!buyerWalletType) throw new Error("Connect a wallet first");
+
+      if (buyerWalletType !== 'metamask' && buyerWalletType !== 'crossmark') {
+        throw new Error("Unsupported wallet type");
+      }
 
       // mark creating + clear prior error
       await updateDoc(doc(db, "offers", offer.id), {
@@ -1857,9 +1936,19 @@ const SellDashboard: React.FC = () => {
 
       const buyerProfile = await fetchUserByUid(offer.buyerUid);
       const sellerProfile = await fetchUserByUid(offer.sellerUid);
+
+      // Both MetaMask and Crossmark users need EVM addresses for XRPL EVM sidechain
+      if (buyerWalletType === 'metamask') {
+        if (!userState?.evmAddress) throw new Error("MetaMask not connected");
+      } else if (buyerWalletType === 'crossmark') {
+        if (!userState?.evmAddress) throw new Error("Crossmark EVM address not available");
+      }
+
       const buyerAddr = (buyerProfile.evmAddress || "").toLowerCase();
       const sellerAddr = (sellerProfile.evmAddress || "").toLowerCase();
       if (!buyerAddr || !sellerAddr) throw new Error("Buyer/Seller EVM address missing");
+
+
 
       const signer = await getSignerXRPL();
       const me = (await signer.getAddress()).toLowerCase();
@@ -1895,13 +1984,15 @@ const SellDashboard: React.FC = () => {
         escrowAddress,
       });
 
-      await updateDoc(doc(db, "offers", offer.id), {
+      const updateData = {
         escrowAddress,
         escrowStatus: "created",
         state: "ESCROW_CREATED",
-      });
+        escrowType: "evm",
+      };
 
-      alert(`Escrow created: ${escrowAddress}`);
+      await updateDoc(doc(db, "offers", offer.id), updateData);
+      alert(`${buyerWalletType === 'crossmark' ? 'Crossmark' : 'MetaMask'} EVM Escrow created on XRPL EVM sidechain: ${escrowAddress}`);
     } catch (e: any) {
       console.error(e);
       const msg = e?.message || "Could not create escrow.";
@@ -2039,10 +2130,13 @@ const SellDashboard: React.FC = () => {
         offer={selectedOffer}
         role={activeRole}
         buyerEvmAddress={userState?.evmAddress}
+        buyerXrplAddress={userState?.xrplAddress}
+        buyerWalletType={userState?.walletType}
         onClose={() => setSelectedOffer(null)}
         onStartVerifyId={handleStartVerifyId}
         onStartCreateEscrow={handleStartCreateEscrow}
         onFinalApproval={handleFinalApproval}
+        onCancelEscrow={(offerId) => setCancelEscrowOpen({ open: true, offerId })}
       />
 
       {/* Simple IDV Dialog */}
